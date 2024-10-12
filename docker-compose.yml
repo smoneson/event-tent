@@ -10,5 +10,16 @@ services:
     ports:
       - "5432:5432"
 
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - .:/app # Optional: Mount your app directory for hot reloading
+
 volumes:
   postgres_data:
