@@ -1,14 +1,5 @@
-"use client";
+import Image from "next/image";
 
-import React from "react";
-import EventPage from "./components/EventPage";
-
-const page = () => {
-  return (
-    <div>
-      <EventPage />
-    </div>
-  );
-};
-
-export default page;
+export default function Home() {
+  return <div>Hi</div>;
+}
