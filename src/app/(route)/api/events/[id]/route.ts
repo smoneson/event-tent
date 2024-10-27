@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Event } from "@prisma/client";
 import prisma from "../../../../_lib/prisma";
 
 export const GET = async (
@@ -10,19 +11,37 @@ export const GET = async (
     return NextResponse.json("Please provide an id");
   }
 
-  const event = await prisma.event.findUnique({
-    where: {
-      id: parseInt(id),
-    },
-    include: {
-      creator: {
-        select: { name: true },
+  try {
+    const event = await prisma.event.findUnique({
+      where: {
+        id: parseInt(id),
       },
-    },
-  });
+      include: {
+        creator: {
+          select: { name: true },
+        },
+      },
+    });
 
-  return NextResponse.json(event);
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(event);
+  } catch (error) {
+    console.error("Error fetching event: ", error);
+    return NextResponse.json(
+      {
+        error: "Something went wrong while fetching the event",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
 };
+
+type CreateEventReqBody = Omit<Event, "id">;
 
 export const PUT = async (
   request: NextRequest,
@@ -39,22 +58,40 @@ export const PUT = async (
     },
   });
 
-  const { title, description } = await request.json();
-  const updatedEvent = await prisma.event.update({
-    where: {
-      id: parseInt(id),
-    },
-    data: {
-      title: title,
-      description: description,
-    },
-  });
+  if (!event) {
+    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+  }
 
-  return NextResponse.json({
-    success: 1,
-    post: updatedEvent,
-    message: "Update success",
-  });
+  const body: CreateEventReqBody = await request.json();
+  if (!body.title && !body.description && !body.location && !body.date) {
+    return NextResponse.json(
+      {
+        error: "Please enter at least one field to update",
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const updatedEvent = await prisma.event.update({
+      where: {
+        id: parseInt(id),
+      },
+      data: {
+        title: body.title || event.title,
+        description: body.description || event.description,
+        location: body.location || event.location,
+        date: body.date || event.date,
+      },
+    });
+    return NextResponse.json({ updatedEvent });
+  } catch (error) {
+    console.error("Error updating event: ", error);
+    return NextResponse.json(
+      { error: "Something went wrong updating the event" },
+      { status: 500 }
+    );
+  }
 };
 
 export const DELETE = async (
@@ -63,14 +100,37 @@ export const DELETE = async (
 ) => {
   const id = params.id;
   if (!id) {
-    return NextResponse.error();
+    return NextResponse.json(
+      { error: "Please provide an id" },
+      { status: 400 }
+    );
   }
 
-  const deletePost = await prisma.event.delete({
-    where: {
-      id: parseInt(id),
-    },
-  });
+  try {
+    const existingEvent = await prisma.event.findUnique({
+      where: {
+        id: parseInt(id),
+      },
+    });
 
-  return NextResponse.json({ success: 1, message: "Delete success" });
+    if (!existingEvent) {
+      return NextResponse.json("Event not found", { status: 404 });
+    }
+
+    const deletePost = await prisma.event.delete({
+      where: {
+        id: parseInt(id),
+      },
+    });
+    return NextResponse.json({
+      success: 1,
+      message: "Delete success",
+      deletedEvent: deletePost,
+    });
+  } catch (error) {
+    console.error("Error deleting event: ", error);
+    return NextResponse.json("Something went wrong deleting the event", {
+      status: 500,
+    });
+  }
 };
