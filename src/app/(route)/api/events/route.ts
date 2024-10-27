@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Event } from "@prisma/client";
 import prisma from "@/app/_lib/prisma";
 
-export async function GET() {
+export const GET = async () => {
   const events = await prisma.event.findMany({
     include: {
       creator: {
@@ -12,7 +12,7 @@ export async function GET() {
   });
 
   return NextResponse.json(events);
-}
+};
 
 type CreateEventReqBody = Omit<Event, "id">;
 
